@@ -58,7 +58,9 @@ class ASR:
                 text = res["text"]
             if len(text) == self.text:
                 ASR_text = ""
-                ASR_result.track_id = -1
+                ASR_result.track_id = (
+                    -1
+                )  # 如果识别不出结果，那就先当这个人没有说话，后面可以再优化，先试试理想情况下方法效果怎么样
             else:
                 ASR_text = text[len(self.text) :]
             self.text = text
