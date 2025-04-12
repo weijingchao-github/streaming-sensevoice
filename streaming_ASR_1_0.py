@@ -24,12 +24,12 @@ class ASR:
     def __init__(self):
         # others
         self.alg_args = SimpleNamespace(
-            chunk_size=10,
+            chunk_size=8,
             language="zh",
             device="cuda:0",
-            is_last=True,
         )
         self.text = ""
+        self.debug = False
         # model init
         self.model = StreamingSenseVoice(
             chunk_size=self.alg_args.chunk_size,
@@ -46,17 +46,21 @@ class ASR:
         ASR_result = ASRResult()
         ASR_result.seq_id = active_speaker_audio.seq_id
         ASR_result.track_id = active_speaker_audio.track_id
-        if active_speaker_audio.tracker_id == -1:
+        if active_speaker_audio.track_id == -1:
             self.pub_ASR_result.publish(ASR_result)
+            if self.debug:
+                self._print_ASR_result(ASR_result)
         else:
             audio = np.array(active_speaker_audio.audio, dtype=np.int16)
+            blank_audio = np.zeros_like(audio, dtype=np.int16)
             text = ""
             ASR_text = ""
-            for res in self.model.streaming_inference(
-                audio, is_last=self.alg_args.is_last
-            ):
+            for res in self.model.streaming_inference(audio, is_last=False):
                 text = res["text"]
-            if len(text) == self.text:
+            for res in self.model.streaming_inference(blank_audio, is_last=False):
+                text = res["text"]
+
+            if len(text) == len(self.text):
                 ASR_text = ""
                 ASR_result.track_id = (
                     -1
@@ -66,6 +70,14 @@ class ASR:
             self.text = text
             ASR_result.ASR_result = ASR_text
             self.pub_ASR_result.publish(ASR_result)
+
+            if self.debug:
+                self._print_ASR_result(ASR_result)
+
+    def _print_ASR_result(self, ASR_result):
+        track_id = ASR_result.track_id
+        text = ASR_result.ASR_result
+        print(f"{track_id}: {text}")
 
 
 def main():
